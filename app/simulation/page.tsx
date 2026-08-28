@@ -185,7 +185,7 @@ export default function SimulationPage() {
                  onClick={async () => {
                    try {
                      useSimulationStore.getState().addLog('> Dispatched Emergency SMS to +918762471304...');
-                     const res = await fetch('https://sih-drishti-backend.onrender.com/api/sms/', {
+                     const res = await fetch('/api/sms', {
                        method: 'POST',
                        headers: { 'Content-Type': 'application/json' },
                        body: JSON.stringify({
