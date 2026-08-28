@@ -88,6 +88,26 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   addLog: (msg) => set((state) => ({ logs: [...state.logs, msg] })),
 
+  resetSimulation: () => set((state) => {
+    const newModules = { ...state.modules };
+    Object.keys(newModules).forEach(key => {
+      newModules[key] = {
+        ...newModules[key],
+        temp: 24,
+        humidity: 10,
+        co2: 5,
+        status: 'SAFE'
+      };
+    });
+    return {
+      modules: newModules,
+      globalModifiers: { temp: 0, humidity: 0, co2: 0 },
+      isSimulating: false,
+      simulationTarget: { moduleId: null, type: null },
+      logs: [...state.logs, '> System rebooted. All nodes resetting to baseline safe levels.']
+    };
+  }),
+
   tickSimulation: () => {
     set((state) => {
       const newModules = { ...state.modules };

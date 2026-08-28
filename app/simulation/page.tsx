@@ -2,7 +2,35 @@
 
 import { useState, useEffect } from 'react';
 import { useSimulationStore } from '@/store/useSimulationStore';
-import { Bug, ThermometerSun, Leaf, CircleDashed } from 'lucide-react';
+import { Bug, ThermometerSun, Leaf, CircleDashed, Plus, Minus, RotateCcw } from 'lucide-react';
+
+const ModifierControl = ({ label, value, onChange, unit, min, max, step = 1 }: any) => (
+  <div className="bg-neutral-900/40 rounded-xl p-3 border border-white/5 flex items-center justify-between">
+    <div className="flex flex-col">
+      <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">{label}</span>
+    </div>
+    
+    <div className="flex items-center gap-2 bg-black/40 rounded-lg p-1 border border-white/5">
+      <button 
+        onClick={() => onChange(Math.max(min, value - step))}
+        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
+      >
+        <Minus className="w-3.5 h-3.5" />
+      </button>
+      
+      <div className="w-10 text-center font-mono text-xs text-neutral-200">
+        {value > 0 ? '+' : ''}{value}{unit}
+      </div>
+      
+      <button 
+        onClick={() => onChange(Math.min(max, value + step))}
+        className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
+      >
+        <Plus className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  </div>
+);
 
 export default function SimulationPage() {
   const { 
@@ -12,11 +40,11 @@ export default function SimulationPage() {
     triggerFungus, 
     setGlobalModifiers, 
     tickSimulation,
-    isSimulating
+    resetSimulation,
+    globalModifiers
   } = useSimulationStore();
 
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, moduleId: string } | null>(null);
-  const [hoveredMod, setHoveredMod] = useState<string | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -116,33 +144,39 @@ export default function SimulationPage() {
         
         {/* Top Right: Inputs */}
         <div className="border border-white/5 p-6 rounded-2xl bg-white/[0.02] flex-none">
-          <div className="mb-6">
-            <h3 className="font-medium text-white">Global Modifiers</h3>
-            <p className="text-xs text-neutral-500">Adjust baseline room parameters</p>
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h3 className="font-medium text-white">Global Modifiers</h3>
+              <p className="text-xs text-neutral-500 mt-1">Adjust baseline room parameters</p>
+            </div>
+            <button 
+              onClick={resetSimulation}
+              className="flex items-center gap-2 bg-neutral-900 border border-white/10 hover:border-white/20 hover:bg-neutral-800 text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg transition-all text-xs"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset
+            </button>
           </div>
 
-          <div className="space-y-6">
-            <div>
-              <div className="flex justify-between mb-2">
-                <label className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Temperature Variance</label>
-              </div>
-              <input type="range" className="w-full accent-neutral-500" min="-10" max="10" defaultValue="0" 
-                onChange={(e) => setGlobalModifiers({ temp: parseInt(e.target.value) })}/>
-            </div>
-            <div>
-              <div className="flex justify-between mb-2">
-                <label className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Humidity Variance</label>
-              </div>
-              <input type="range" className="w-full accent-neutral-500" min="-20" max="20" defaultValue="0" 
-                onChange={(e) => setGlobalModifiers({ humidity: parseInt(e.target.value) })}/>
-            </div>
-            <div>
-              <div className="flex justify-between mb-2">
-                <label className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Gas (CO2) Variance</label>
-              </div>
-              <input type="range" className="w-full accent-neutral-500" min="-10" max="10" defaultValue="0" 
-                onChange={(e) => setGlobalModifiers({ co2: parseInt(e.target.value) })}/>
-            </div>
+          <div className="space-y-3">
+            <ModifierControl 
+              label="Temperature Variance" 
+              value={globalModifiers.temp} 
+              unit="°C" min={-10} max={10} step={1}
+              onChange={(val: number) => setGlobalModifiers({ temp: val })} 
+            />
+            <ModifierControl 
+              label="Humidity Variance" 
+              value={globalModifiers.humidity} 
+              unit="%" min={-20} max={20} step={2}
+              onChange={(val: number) => setGlobalModifiers({ humidity: val })} 
+            />
+            <ModifierControl 
+              label="Gas (CO2) Variance" 
+              value={globalModifiers.co2} 
+              unit="%" min={-10} max={10} step={1}
+              onChange={(val: number) => setGlobalModifiers({ co2: val })} 
+            />
           </div>
         </div>
 
