@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSimulationStore } from '@/store/useSimulationStore';
-import { Bug, ThermometerSun, Leaf, CircleDashed, Plus, Minus, RotateCcw } from 'lucide-react';
+import { Bug, ThermometerSun, Leaf, CircleDashed, Plus, Minus, RotateCcw, MessageSquare } from 'lucide-react';
 
 const ModifierControl = ({ label, value, onChange, unit, min, max, step = 1 }: any) => (
   <div className="bg-neutral-900/40 rounded-xl p-3 border border-white/5 flex items-center justify-between">
@@ -177,6 +177,36 @@ export default function SimulationPage() {
               unit="%" min={-10} max={10} step={1}
               onChange={(val: number) => setGlobalModifiers({ co2: val })} 
             />
+          </div>
+
+          {/* Emergency Alert Section */}
+          <div className="mt-6 pt-6 border-t border-white/5">
+               <button 
+                 onClick={async () => {
+                   try {
+                     useSimulationStore.getState().addLog('> Dispatched Emergency SMS to +918762471304...');
+                     const res = await fetch('https://sih-drishti-backend.onrender.com/api/sms/', {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json' },
+                       body: JSON.stringify({
+                         phone_number: '+918762471304',
+                         message: 'DRISHTI ALERT: Critical environmental thresholds breached in Storage Zone. Immediate inspection required.'
+                       })
+                     });
+                     if (res.ok) {
+                       useSimulationStore.getState().addLog('> SUCCESS: SMS alert delivered successfully.');
+                     } else {
+                       useSimulationStore.getState().addLog('> ERROR: Failed to deliver SMS alert.');
+                     }
+                   } catch (err) {
+                     useSimulationStore.getState().addLog('> ERROR: Network failure dispatching SMS.');
+                   }
+                 }}
+                 className="flex items-center justify-center gap-2 w-full bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 px-4 py-2.5 rounded-lg transition-all text-xs font-semibold tracking-wide uppercase"
+               >
+                 <MessageSquare className="w-4 h-4" />
+                 Send SMS Alert
+               </button>
           </div>
         </div>
 
