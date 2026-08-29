@@ -11,6 +11,10 @@ export async function POST() {
     
     const modules = await Module.find({});
     
+    // Prepare bulk operations for massive speedup on Vercel
+    const bulkOps = [];
+    const telemetryOps = [];
+    
     for (const mod of modules) {
       // Simulate natural fluctuation (random walk)
       let newTemp = mod.current_metrics.temp + (Math.random() * 0.8 - 0.4);
@@ -27,35 +31,63 @@ export async function POST() {
       const newStatus = isCritical ? 'CRITICAL' : 'SAFE';
       const justBecameCritical = isCritical && mod.status !== 'CRITICAL';
 
-      // Update Module (so the live UI updates every 5s)
-      mod.current_metrics = { temp: newTemp, humidity: newHum, co2: newCo2 };
-      mod.status = newStatus;
-      await mod.save();
+      // Queue the module update
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: mod._id },
+          update: { 
+            $set: { 
+              current_metrics: { temp: newTemp, humidity: newHum, co2: newCo2 },
+              status: newStatus 
+            } 
+          }
+        }
+      });
 
-      // IMPORTANT: To prevent MongoDB from getting flooded with millions of records overnight 
-      // from the 5s polling, we only log to the historical Telemetry collection ~2% of the time 
-      // or if the status just became CRITICAL.
+      // Throttled history logging queue
       if (Math.random() < 0.02 || justBecameCritical) {
-        await Telemetry.create({
+        telemetryOps.push({
           module_id: mod._id,
           metrics: { temp: newTemp, humidity: newHum, co2: newCo2 }
         });
       }
     }
 
-    // Update Installation overall status based on its modules
+    // Execute all database updates in just two high-speed queries!
+    if (bulkOps.length > 0) {
+      await Module.bulkWrite(bulkOps);
+    }
+    if (telemetryOps.length > 0) {
+      await Telemetry.insertMany(telemetryOps);
+    }
+
+    // Update Installation overall status concurrently
     const installations = await Installation.find({});
-    for (const inst of installations) {
-      const instModules = await Module.find({ installation_id: inst._id });
-      const hasCritical = instModules.some(m => m.status === 'CRITICAL');
+    const instBulkOps = [];
+
+    await Promise.all(installations.map(async (inst) => {
+      const instModules = await Module.find({ installation_id: inst._id }).lean();
+      const hasCritical = instModules.some((m: any) => m.status === 'CRITICAL');
       
+      let newStatus = inst.overall_status;
       if (hasCritical && inst.overall_status !== 'CRITICAL') {
-        inst.overall_status = 'CRITICAL';
-        await inst.save();
+        newStatus = 'CRITICAL';
       } else if (!hasCritical && inst.overall_status !== 'SAFE') {
-        inst.overall_status = 'SAFE';
-        await inst.save();
+        newStatus = 'SAFE';
       }
+
+      if (newStatus !== inst.overall_status) {
+        instBulkOps.push({
+          updateOne: {
+            filter: { _id: inst._id },
+            update: { $set: { overall_status: newStatus } }
+          }
+        });
+      }
+    }));
+
+    if (instBulkOps.length > 0) {
+      await Installation.bulkWrite(instBulkOps);
     }
 
     return NextResponse.json({ message: 'Simulation tick completed successfully.' });
