@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSimulationStore } from '@/store/useSimulationStore';
 import { Bug, ThermometerSun, Leaf, CircleDashed, Plus, Minus, RotateCcw, MessageSquare } from 'lucide-react';
 
@@ -45,6 +45,7 @@ export default function SimulationPage() {
   } = useSimulationStore();
 
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, moduleId: string } | null>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -52,6 +53,11 @@ export default function SimulationPage() {
     }, 1000);
     return () => clearInterval(interval);
   }, [tickSimulation]);
+
+  // Auto-scroll terminal to bottom when logs update
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
 
   const handleSackClick = (e: React.MouseEvent, moduleId: string) => {
     e.stopPropagation();
@@ -230,6 +236,7 @@ export default function SimulationPage() {
                     </div>
                   );
                 })}
+                <div ref={logEndRef} />
               </div>
             )}
           </div>
